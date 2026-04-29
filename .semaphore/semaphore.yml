@@ -1,46 +1,50 @@
 version: v1.0
-name: "Flask App - Build and Deploy to Kubernetes"
-
+name: Flask App - Build and Deploy to Kubernetes
 agent:
   machine:
     type: e1-standard-2
     os_image: ubuntu2004
-
 fail_fast:
   stop:
     when: branch != 'main'
 auto_cancel:
   running:
     when: branch != 'main'
-
 blocks:
-  - name: "Build and Push Image"
+  - name: Build and Push Image
     dependencies: []
     task:
       secrets:
-        - name: dockerhub
+        - name: DOCKER_LOGIN
       jobs:
-        - name: "Build and push Docker image"
+        - name: Build and push Docker image
           commands:
             - checkout
             - cd 1-deployment
             - echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-            - docker build -t "$DOCKERHUB_USERNAME/my-flask-image:latest" .
-            - docker push "$DOCKERHUB_USERNAME/my-flask-image:latest"
-
-  - name: "Deploy to Kubernetes"
-    dependencies: ["Build and Push Image"]
+            - 'docker build -t "$DOCKERHUB_USERNAME/my-flask-image:latest" .'
+            - 'docker push "$DOCKERHUB_USERNAME/my-flask-image:latest"'
+      agent:
+        machine:
+          type: r1-standard-2
+          os_image: ubuntu2404
+        containers:
+          - name: main
+            image: 'semaphoreci/ubuntu:20.04'
+  - name: Deploy to Kubernetes
+    dependencies:
+      - Build and Push Image
     task:
       secrets:
         - name: dockerhub
         - name: kubeconfig
       jobs:
-        - name: "Deploy manifests"
+        - name: Deploy manifests
           commands:
             - checkout
             - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
             - export KUBECONFIG=/tmp/kubeconfig.yml
-            - if [ -n "$KUBE_CONTEXT" ]; then kubectl config use-context "$KUBE_CONTEXT"; fi
+            - 'if [ -n "$KUBE_CONTEXT" ]; then kubectl config use-context "$KUBE_CONTEXT"; fi'
             - kubectl create namespace g4 || true
             - kubectl config set-context --current --namespace=g4
             - cd 1-deployment
@@ -48,17 +52,17 @@ blocks:
             - kubectl apply -f deployment.yml
             - kubectl apply -f service.yml
             - kubectl rollout status deployment/flask-app --timeout=120s
-
-  - name: "Verify"
-    dependencies: ["Deploy to Kubernetes"]
+  - name: Verify
+    dependencies:
+      - Deploy to Kubernetes
     task:
       secrets:
         - name: kubeconfig
       jobs:
-        - name: "Check service"
+        - name: Check service
           commands:
             - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
             - export KUBECONFIG=/tmp/kubeconfig.yml
-            - if [ -n "$KUBE_CONTEXT" ]; then kubectl config use-context "$KUBE_CONTEXT"; fi
+            - 'if [ -n "$KUBE_CONTEXT" ]; then kubectl config use-context "$KUBE_CONTEXT"; fi'
             - kubectl config set-context --current --namespace=g4
             - kubectl get svc flask-app
