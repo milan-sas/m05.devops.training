@@ -39,9 +39,10 @@ blocks:
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
             - export KUBECONFIG=/tmp/kubeconfig.yml
-            - 'if [ -n "$KUBE_CONTEXT" ]; then kubectl config use-context "$KUBE_CONTEXT"; fi'
+            - KUBE_CTX=${KUBE_CONTEXT:-$(kubectl config get-contexts -o name | head -1)}
+            - kubectl config use-context $KUBE_CTX
             - kubectl create namespace g4 || true
-            - kubectl config set-context --current --namespace=g4
+            - kubectl config set-context $KUBE_CTX --namespace=g4
             - cd 1-deployment
             - sed -i "s|DOCKER_USERNAME|$DOCKER_USERNAME|g" deployment.yml
             - kubectl apply -f deployment.yml
@@ -60,6 +61,7 @@ blocks:
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
             - export KUBECONFIG=/tmp/kubeconfig.yml
-            - 'if [ -n "$KUBE_CONTEXT" ]; then kubectl config use-context "$KUBE_CONTEXT"; fi'
-            - kubectl config set-context --current --namespace=g4
+            - KUBE_CTX=${KUBE_CONTEXT:-$(kubectl config get-contexts -o name | head -1)}
+            - kubectl config use-context $KUBE_CTX
+            - kubectl config set-context $KUBE_CTX --namespace=g4
             - kubectl get svc flask-app
