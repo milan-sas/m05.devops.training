@@ -36,12 +36,14 @@ blocks:
       - Build and Push Image
     task:
       secrets:
-        - name: dockerhub
+        - name: DOCKER_LOGIN
         - name: kubeconfig
       jobs:
         - name: Deploy manifests
           commands:
             - checkout
+            - curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
             - export KUBECONFIG=/tmp/kubeconfig.yml
             - 'if [ -n "$KUBE_CONTEXT" ]; then kubectl config use-context "$KUBE_CONTEXT"; fi'
@@ -61,6 +63,8 @@ blocks:
       jobs:
         - name: Check service
           commands:
+            - curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
             - export KUBECONFIG=/tmp/kubeconfig.yml
             - 'if [ -n "$KUBE_CONTEXT" ]; then kubectl config use-context "$KUBE_CONTEXT"; fi'
