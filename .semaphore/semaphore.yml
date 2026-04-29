@@ -1,5 +1,5 @@
 version: v1.0
-name: Flask App - Blue/Green Deployment
+name: Flask App - Canary Deployment
 agent:
   machine:
     type: f1-standard-2
@@ -21,37 +21,37 @@ blocks:
         - name: Build and push Docker image
           commands:
             - checkout
-            - cd 2-blue-green-deployment
+            - cd 3-canary-deployment
             - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
             - 'docker build -t "$DOCKER_USERNAME/my-flask-image:latest" .'
             - 'docker push "$DOCKER_USERNAME/my-flask-image:latest"'
 
-  - name: Deploy Blue
+  - name: Deploy Stable
     dependencies:
       - Build and Push Image
     task:
       secrets:
         - name: DOCKER_LOGIN
       jobs:
-        - name: Deploy blue manifests
+        - name: Deploy stable manifests
           commands:
             - checkout
             - export KUBECONFIG=$(pwd)/kubeconfig.yml
             - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - kubectl create namespace g4 || true
-            - cd 2-blue-green-deployment
-            - sed -i "s|DOCKER_USERNAME|$DOCKER_USERNAME|g" deployment-blue.yml
-            - kubectl apply -f deployment-blue.yml -n g4 --validate=false
-            - kubectl apply -f service-blue.yml -n g4 --validate=false
-            - kubectl rollout status deployment/flask-app-blue -n g4 --timeout=120s
+            - cd 3-canary-deployment
+            - sed -i "s|DOCKER_USERNAME|$DOCKER_USERNAME|g" deployment-stable.yml
+            - kubectl apply -f deployment-stable.yml -n g4 --validate=false
+            - kubectl apply -f service.yml -n g4 --validate=false
+            - kubectl rollout status deployment/flask-app-stable -n g4 --timeout=120s
 
-  - name: Verify Blue
+  - name: Verify Stable
     dependencies:
-      - Deploy Blue
+      - Deploy Stable
     task:
       jobs:
-        - name: Check blue service
+        - name: Check stable service
           commands:
             - checkout
             - export KUBECONFIG=$(pwd)/kubeconfig.yml
@@ -60,5 +60,5 @@ blocks:
             - kubectl get svc flask-app -n g4
 
 promotions:
-  - name: Deploy Green
-    pipeline_file: deploy-green.yml
+  - name: Deploy Canary
+    pipeline_file: deploy-canary.yml

@@ -1,0 +1,39 @@
+version: v1.0
+name: Flask App - Deploy Canary
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2404
+
+blocks:
+  - name: Deploy Canary
+    dependencies: []
+    task:
+      secrets:
+        - name: DOCKER_LOGIN
+      jobs:
+        - name: Deploy canary manifests
+          commands:
+            - checkout
+            - export KUBECONFIG=$(pwd)/kubeconfig.yml
+            - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
+            - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+            - kubectl create namespace g4 || true
+            - cd 3-canary-deployment
+            - sed -i "s|DOCKER_USERNAME|$DOCKER_USERNAME|g" deployment-canary.yml
+            - kubectl apply -f deployment-canary.yml -n g4 --validate=false
+            - kubectl rollout status deployment/flask-app-canary -n g4 --timeout=120s
+
+  - name: Verify Canary
+    dependencies:
+      - Deploy Canary
+    task:
+      jobs:
+        - name: Check canary traffic
+          commands:
+            - checkout
+            - export KUBECONFIG=$(pwd)/kubeconfig.yml
+            - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
+            - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+            - kubectl get svc flask-app -n g4
+            - kubectl get pods -n g4 -l app=flask-app
