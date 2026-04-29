@@ -30,30 +30,28 @@ blocks:
     task:
       secrets:
         - name: DOCKER_LOGIN
-        - name: kubeconfig
       jobs:
         - name: Deploy manifests
           commands:
             - checkout
+            - export KUBECONFIG=$(pwd)/kubeconfig.yml
             - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-            - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
-            - kubectl --kubeconfig=/tmp/kubeconfig.yml create namespace g4 || true
+            - kubectl create namespace g4 || true
             - cd 1-deployment
             - sed -i "s|DOCKER_USERNAME|$DOCKER_USERNAME|g" deployment.yml
-            - kubectl --kubeconfig=/tmp/kubeconfig.yml apply -f deployment.yml -n g4 --validate=false
-            - kubectl --kubeconfig=/tmp/kubeconfig.yml apply -f service.yml -n g4 --validate=false
-            - kubectl --kubeconfig=/tmp/kubeconfig.yml rollout status deployment/flask-app -n g4 --timeout=120s
+            - kubectl apply -f deployment.yml -n g4 --validate=false
+            - kubectl apply -f service.yml -n g4 --validate=false
+            - kubectl rollout status deployment/flask-app -n g4 --timeout=120s
   - name: Verify
     dependencies:
       - Deploy to Kubernetes
     task:
-      secrets:
-        - name: kubeconfig
       jobs:
         - name: Check service
           commands:
+            - checkout
+            - export KUBECONFIG=$(pwd)/kubeconfig.yml
             - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-            - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
-            - kubectl --kubeconfig=/tmp/kubeconfig.yml get svc flask-app -n g4
+            - kubectl get svc flask-app -n g4
