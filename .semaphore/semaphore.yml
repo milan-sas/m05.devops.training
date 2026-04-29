@@ -2,8 +2,8 @@ version: v1.0
 name: Flask App - Build and Deploy to Kubernetes
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: f1-standard-2
+    os_image: ubuntu2404
 fail_fast:
   stop:
     when: branch != 'main'
