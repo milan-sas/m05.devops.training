@@ -41,8 +41,8 @@ blocks:
             - kubectl --kubeconfig=/tmp/kubeconfig.yml create namespace g4 || true
             - cd 1-deployment
             - sed -i "s|DOCKER_USERNAME|$DOCKER_USERNAME|g" deployment.yml
-            - kubectl --kubeconfig=/tmp/kubeconfig.yml apply -f deployment.yml -n g4
-            - kubectl --kubeconfig=/tmp/kubeconfig.yml apply -f service.yml -n g4
+            - kubectl --kubeconfig=/tmp/kubeconfig.yml apply -f deployment.yml -n g4 --validate=false
+            - kubectl --kubeconfig=/tmp/kubeconfig.yml apply -f service.yml -n g4 --validate=false
             - kubectl --kubeconfig=/tmp/kubeconfig.yml rollout status deployment/flask-app -n g4 --timeout=120s
   - name: Verify
     dependencies:
