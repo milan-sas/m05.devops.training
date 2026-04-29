@@ -1,0 +1,39 @@
+version: v1.0
+name: Flask App - Deploy Green
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2404
+
+blocks:
+  - name: Deploy Green
+    dependencies: []
+    task:
+      secrets:
+        - name: DOCKER_LOGIN
+      jobs:
+        - name: Deploy green manifests
+          commands:
+            - checkout
+            - export KUBECONFIG=$(pwd)/kubeconfig.yml
+            - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
+            - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+            - kubectl create namespace g4 || true
+            - cd 2-blue-green-deployment
+            - sed -i "s|DOCKER_USERNAME|$DOCKER_USERNAME|g" deployment-green.yml
+            - kubectl apply -f deployment-green.yml -n g4 --validate=false
+            - kubectl apply -f service-green.yml -n g4 --validate=false
+            - kubectl rollout status deployment/flask-app-green -n g4 --timeout=120s
+
+  - name: Verify Green
+    dependencies:
+      - Deploy Green
+    task:
+      jobs:
+        - name: Check green service
+          commands:
+            - checkout
+            - export KUBECONFIG=$(pwd)/kubeconfig.yml
+            - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
+            - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+            - kubectl get svc flask-app -n g4
