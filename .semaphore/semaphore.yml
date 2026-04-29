@@ -38,16 +38,12 @@ blocks:
             - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
-            - export KUBECONFIG=/tmp/kubeconfig.yml
-            - KUBE_CTX=${KUBE_CONTEXT:-$(kubectl config get-contexts -o name | head -1)}
-            - kubectl config use-context $KUBE_CTX
-            - kubectl create namespace g4 || true
-            - kubectl config set-context $KUBE_CTX --namespace=g4
+            - kubectl --kubeconfig=/tmp/kubeconfig.yml create namespace g4 || true
             - cd 1-deployment
             - sed -i "s|DOCKER_USERNAME|$DOCKER_USERNAME|g" deployment.yml
-            - kubectl apply -f deployment.yml
-            - kubectl apply -f service.yml
-            - kubectl rollout status deployment/flask-app --timeout=120s
+            - kubectl --kubeconfig=/tmp/kubeconfig.yml apply -f deployment.yml -n g4
+            - kubectl --kubeconfig=/tmp/kubeconfig.yml apply -f service.yml -n g4
+            - kubectl --kubeconfig=/tmp/kubeconfig.yml rollout status deployment/flask-app -n g4 --timeout=120s
   - name: Verify
     dependencies:
       - Deploy to Kubernetes
@@ -60,8 +56,4 @@ blocks:
             - 'curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"'
             - chmod +x kubectl && sudo mv kubectl /usr/local/bin/
             - echo "$KUBECONFIG_BASE64" | base64 -d > /tmp/kubeconfig.yml
-            - export KUBECONFIG=/tmp/kubeconfig.yml
-            - KUBE_CTX=${KUBE_CONTEXT:-$(kubectl config get-contexts -o name | head -1)}
-            - kubectl config use-context $KUBE_CTX
-            - kubectl config set-context $KUBE_CTX --namespace=g4
-            - kubectl get svc flask-app
+            - kubectl --kubeconfig=/tmp/kubeconfig.yml get svc flask-app -n g4
